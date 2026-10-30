@@ -1,3 +1,5 @@
+![Banner](banner.png)
+
 # monitor-systemtimechanges
 Monitors changes to the system time, which can indicate attempts to evade detection. - Focused on System monitoring and alerts
 
