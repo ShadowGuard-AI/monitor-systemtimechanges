@@ -1,7 +1,6 @@
 import argparse
 import time
 import logging
-import psutil
 import os
 
 # Configure logging
@@ -57,6 +56,15 @@ def main():
         print(f"Error: {e}")  # Also print to console for immediate feedback
         return 1  # Indicate failure
 
+    # A threshold below the interval can never be met by a normal cycle:
+    # even a sample taken at once differs from the interval by more than
+    # the threshold, so every cycle would report a change that did not
+    # happen. Reject that combination at startup.
+    if args.threshold < args.interval:
+        logging.error("Error: Threshold must be at least the interval.")
+        print("Error: Threshold must be at least the interval.")
+        return 1
+
     # Configure logging to file
     file_handler = logging.FileHandler(args.log_file)
     file_handler.setLevel(logging.INFO)
@@ -65,12 +73,20 @@ def main():
     logging.getLogger('').addHandler(file_handler)  # Add to root logger
 
     try:
-        last_time = time.time()
+        last_time = None
         logging.info("System time monitor started.")
         print("System time monitor started.  Logging to", args.log_file)
 
         while True:
             current_time = time.time()
+
+            if last_time is None:
+                # The first sample is the baseline only. It is not tested,
+                # because there is no earlier sample to compare it with.
+                last_time = current_time
+                time.sleep(args.interval)
+                continue
+
             time_difference = current_time - last_time
 
             if abs(time_difference - args.interval) > args.threshold:
