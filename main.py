@@ -48,6 +48,9 @@ def main():
     args = parser.parse_args()
 
     # Input Validation: Ensure interval and threshold are positive integers
+    # argparse already ran type=int, so a non number never reaches this
+    # code: parse_args exits first. What this pass actually catches is
+    # zero and negatives, which argparse happily accepts as ints.
     try:
         args.interval = check_positive_int(args.interval)
         args.threshold = check_positive_int(args.threshold)
@@ -78,6 +81,12 @@ def main():
         print("System time monitor started.  Logging to", args.log_file)
 
         while True:
+            # I read the wall clock on purpose here. A monotonic clock
+            # would step over a manual time change without noticing, and
+            # noticing is the whole job. The cost of that choice: a
+            # machine that sleeps or suspends between samples looks
+            # exactly like a clock that jumped forward, and I cannot
+            # tell those two apart from this reading alone.
             current_time = time.time()
 
             if last_time is None:
@@ -108,6 +117,9 @@ def main():
 
 if __name__ == "__main__":
     # Security best practice:  Check if running as root.  Warn if so.
+    # geteuid exists only on Unix, so on Windows this line raises
+    # AttributeError and the monitor never starts. I leave that as is
+    # rather than hiding it behind a platform branch I have not run.
     if os.geteuid() == 0:
         print("Warning: Running as root.  Consider running as a non-privileged user for security reasons.")
         logging.warning("Running as root. Consider running as a non-privileged user for security reasons.")
